@@ -1,0 +1,7 @@
+[k8s-master]
+47.108.82.215 new_hostname=master.linux.io
+
+[k8s-node]
+47.108.61.43 new_hostname=node01.linux.io
+47.108.94.212 new_hostname=node02.linux.io
+47.108.145.187 new_hostname=node03.linux.io

@@ -1,0 +1,18 @@
+---
+- hosts: k8s-node
+  remote_user: root
+  gather_facts: true
+  tasks:
+    - name: Creates directory
+      file:
+        path: /opt/shell
+        state: directory
+    - name: copt join cluster script
+      copy:
+        src: tmp/node-join.sh
+        dest: /opt/shell/node-join.sh
+        mode: 0777
+    - name: do join cluster
+      command: sh /opt/shell/node-join.sh
+      register: out
+    - debug: var=out.stdout_lines

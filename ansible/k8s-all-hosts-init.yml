@@ -1,0 +1,80 @@
+---
+- hosts: all
+  remote_user: root
+  gather_facts: true
+  tasks:
+    - name: update hostnames
+      hostname:
+        name: "{{ new_hostname }}"
+    - name: Download docker-ce
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+    - name: time sync
+      service:
+        name: chronyd
+        state: started
+    - name: time sync enabled
+      service:
+        name: chronyd
+        enabled: yes
+    - name: close firewall
+      service:
+        name: firewalld
+        state: stopped
+
+    - name: disable firewall
+      service:
+        name: firewalld
+        enabled: no
+    - name: close SELinux
+      shell: |
+        setenforce 0
+        sed -i 's@^\(SELINUX=\).*@\1disabled@' /etc/sysconfig/selinux
+
+    - name: install docker-ce
+      yum:
+        name: "docker-ce"
+    - name: Set docker Exec
+      lineinfile:
+        dest: /usr/lib/systemd/system/docker.service
+        insertafter: 'ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock'
+        line: 'ExecStartPost=/usr/sbin/iptables -P FORWARD ACCEPT'
+        state: present
+    - name: daemon_reload docker
+      systemd:
+        daemon_reload: yes
+    - name: start docker
+      service:
+        name: docker
+        state: started
+    - name: enable docker
+      service:
+        name: docker
+        enabled: yes
+
+    - name: create k8s config file
+      copy:
+        src: shell/kubernetes.repo
+        dest: /etc/yum.repos.d/kubernetes.repo
+    - name: Install k8s Component
+      yum:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+    - name: ignore swap for kubelet
+      lineinfile:
+        dest: /etc/sysconfig/kubelet
+        regexp: '^\s*KUBELET_EXTRA_ARGS=.*$'
+        line: 'KUBELET_EXTRA_ARGS="--fail-swap-on=false"'
+        backrefs: yes
+    - name: Start service kubelet
+      service:
+        name: kubelet
+        state: started
+
+    - name: Enable service kubelet, if started
+      service:
+        name: kubelet
+        enabled: yes

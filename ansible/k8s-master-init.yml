@@ -1,0 +1,62 @@
+---
+- hosts: k8s-master
+  remote_user: root
+  vars:
+  #http_port: 8088
+  tasks:
+    - name: Creates directory
+      file:
+        path: /opt/shell
+        state: directory
+    - name: Creates directory
+      file:
+        path: /opt/yml
+        state: directory
+    - name: Transfer the image pull script
+      copy:
+        src: shell/k8s-componet-pull.sh
+        dest: /opt/shell/k8s-componet-pull.sh
+        mode: 0777
+    - name: Transfer the master init script
+      copy:
+        src: shell/kubeadmin-init.sh
+        dest: /opt/shell/kubeadmin-init.sh
+        mode: 0777
+    - name: Transfer the master config script
+      copy:
+        src: shell/create-kube-config-and-flannel.sh
+        dest: /opt/shell/create-kube-config-and-flannel.sh
+        mode: 0777
+    - name: Transfer the master config script
+      copy:
+        src: yml/flannel.yml
+        dest: /opt/yml/flannel.yml
+
+    - name: kube master image pull
+      command: sh /opt/shell/k8s-componet-pull.sh
+    - name: kube master init
+      command: sh /opt/shell/kubeadmin-init.sh
+    - name: kube master config and flannel
+      command: sh /opt/shell/create-kube-config-and-flannel.sh
+
+    - name: set kube-controller-manager port config
+      lineinfile:
+        dest: /etc/kubernetes/manifests/kube-controller-manager.yaml
+        regexp: '^\s*- --port=0.*$'
+        line: '# - --port=0'
+        backrefs: yes
+    - name: set kube-scheduler port config
+      lineinfile:
+        dest: /etc/kubernetes/manifests/kube-scheduler.yaml
+        regexp: '^\s*- --port=0.*$'
+        line: '# - --port=0'
+        backrefs: yes
+    - name: restart kubelet
+      service:
+        name: kubelet
+        state: restarted
+    - name: fetch init log
+      fetch:
+        src: /opt/shell/node-join.sh
+        dest: tmp/node-join.sh
+        flat: yes
